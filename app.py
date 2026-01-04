@@ -4,40 +4,40 @@ import time
 import qrcode
 from io import BytesIO
 
-# ۱. تنظیمات صفحه و استایل حرفه‌ای (انیمیشن‌ها)
+# ۱. تنظیمات صفحه و استایل حرفه‌ای
 st.set_page_config(page_title="دستیار هوشمند شیمی", page_icon="🧪", layout="wide")
 
 st.markdown("""
     <style>
-    /* استایل کلی و رنگ متن */
     .stApp { background-color: #0e1117; color: #ffffff; }
     
-    /* استایل دکمه‌ها و انیمیشن Hover */
+    /* انیمیشن پالس برای باکس خطر */
+    @keyframes pulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.7); }
+        70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(255, 75, 75, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 75, 75, 0); }
+    }
+    
     .stButton>button {
         width: 100%; border-radius: 15px; height: 3.5em;
         background-color: #ff4b4b; color: white; font-weight: bold;
         border: 2px solid #ff4b4b; transition: all 0.4s ease-in-out;
     }
+    
     .stButton>button:hover { 
         background-color: #ffffff; color: #ff4b4b; 
         transform: scale(1.05); border: 2px solid #ff4b4b;
     }
     
-    /* انیمیشن برای باکس خطر */
-    @keyframes pulse {
-        0% { transform: scale(1); opacity: 0.9; }
-        50% { transform: scale(1.02); opacity: 1; }
-        100% { transform: scale(1); opacity: 0.9; }
-    }
     .danger-box {
-        padding: 20px; border-radius: 10px; border: 2px dashed #ff4b4b;
-        background-color: rgba(255, 75, 75, 0.1); text-align: center;
-        animation: pulse 2s infinite;
+        padding: 25px; border-radius: 15px; border: 3px dashed #ff4b4b;
+        background-color: rgba(255, 75, 75, 0.15); text-align: center;
+        animation: pulse 2s infinite; margin-top: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# ۲. منوی سمت چپ (Sidebar) و QR Code
+# ۲. منوی سمت چپ و QR Code
 st.sidebar.header("🧪 پنل مدیریت پروژه")
 choice = st.sidebar.selectbox("انتخاب بخش کاری:", ["جستجوی اطلاعات ماده", "تحلیل تداخلات خطرناک"])
 
@@ -50,7 +50,7 @@ qr_img.save(buf, format="PNG")
 buf.seek(0)
 st.sidebar.image(buf, caption="اسکن کنید و روی موبایل باز کنید")
 
-# ۳. محتوای اصلی برنامه
+# ۳. بدنه اصلی برنامه
 st.title("🧪 سامانه هوشمند ایمنی و تداخلات شیمیایی")
 
 if choice == "جستجوی اطلاعات ماده":
@@ -64,22 +64,21 @@ if choice == "جستجوی اطلاعات ماده":
                 c = compounds[0]
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.success(f"✅ اطلاعات ماده {compound_name} یافت شد")
-                    st.write(f"**فرمول مولکولی:** {c.molecular_formula}")
+                    st.success(f"✅ اطلاعات {compound_name} استخراج شد")
+                    st.write(f"**فرمول:** {c.molecular_formula}")
                     st.write(f"**وزن مولکولی:** {c.molecular_weight}")
-                    # اضافه شدن لینک مستقیم به منبع جهانی
-                    st.markdown(f"🔗 [مشاهده پروفایل کامل در PubChem](https://pubchem.ncbi.nlm.nih.gov/compound/{c.cid})")
+                    st.markdown(f"🔗 [مشاهده جزئیات کامل در PubChem](https://pubchem.ncbi.nlm.nih.gov/compound/{c.cid})")
                 with col2:
-                    st.image(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{c.cid}/PNG", caption=f"ساختار دو بعدی {compound_name}")
+                    st.image(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{c.cid}/PNG")
             else:
-                st.error("❌ متأسفانه ماده‌ای با این نام یافت نشد.")
+                st.error("❌ ماده یافت نشد.")
         except:
-            st.error("⚠️ خطا در برقراری ارتباط با دیتابیس PubChem.")
+            st.error("⚠️ خطا در اتصال به دیتابیس.")
 
 elif choice == "تحلیل تداخلات خطرناک":
     st.subheader("⚠️ آنالیز هوشمند تداخلات")
-    m1 = st.text_input("نام ماده اول:")
-    m2 = st.text_input("نام ماده دوم:")
+    m1 = st.text_input("نام ماده اول (مثلاً Acid):")
+    m2 = st.text_input("نام ماده دوم (مثلاً Bleach):")
     
     if st.button("شروع آنالیز ایمنی"):
         if m1 and m2:
@@ -88,27 +87,38 @@ elif choice == "تحلیل تداخلات خطرناک":
                 time.sleep(0.01)
                 progress_bar.progress(i + 1)
             
-            m1_l, m2_l = m1.lower(), m2.lower()
+            # تبدیل به حروف کوچک برای مقایسه دقیق
+            m1_l, m2_l = m1.lower().strip(), m2.lower().strip()
+            
+            # تعریف لیست خطرات با منطق منعطف
             hazards = [
-                (["acid", "bleach"], "تولید گاز کلر بسیار سمی", "High Risk"),
-                (["sodium", "water"], "انفجار سریع و اشتعال شدید", "Critical"),
-                (["acid", "base"], "واکنش خنثی‌سازی همراه با گرمای شدید", "Medium Risk")
+                ({"acid", "bleach"}, "تولید گاز کلر بسیار سمی و کشنده", "سطح خطر: بسیار بالا"),
+                ({"sodium", "water"}, "واکنش انفجاری سریع و آزاد شدن هیدروژن", "سطح خطر: بحرانی"),
+                ({"acid", "base"}, "واکنش شدید گرمازا و احتمال پاشش مواد", "سطح خطر: متوسط")
             ]
             
             found = False
-            for (m1_check, m2_check), msg, lvl in hazards:
-                if (m1_l in m1_check and m2_l in m2_check) or (m1_l in m2_check and m2_l in m1_l):
+            user_input_set = {m1_l, m2_l}
+            
+            for hazard_set, msg, lvl in hazards:
+                # چک کردن اینکه آیا هر دو ماده ورودی در مجموعه خطر هستند یا خیر
+                if hazard_set.issubset(user_input_set) or hazard_set == user_input_set:
                     found = True
-                    st.error(f"❌ سطح خطر: {lvl}")
-                    st.markdown(f'<div class="danger-box"><h2 style="color:white; margin:0;">{lvl}</h2><p style="color:white;">{msg}</p></div>', unsafe_allow_html=True)
-                    st.download_button("📥 دریافت فایل گزارش ایمنی", f"گزارش نهایی: ترکیب {m1} و {m2} منجر به {msg} می‌گردد.", file_name="Chemical_Safety_Report.txt")
+                    st.error(f"❌ {lvl}")
+                    st.markdown(f'''
+                        <div class="danger-box">
+                            <h2 style="color:#ff4b4b; margin:0;">{lvl}</h2>
+                            <p style="color:white; font-size:1.3em; font-weight:bold;">{msg}</p>
+                        </div>
+                    ''', unsafe_allow_html=True)
+                    st.download_button("📥 دریافت گزارش ایمنی", f"هشدار تداخل: ترکیب {m1} و {m2} خطرناک است.\nعلت: {msg}", file_name="Safety_Report.txt")
                     break
             
             if not found:
                 st.balloons()
-                st.success("✅ هیچ تداخل خطرناک شناخته شده‌ای بین این دو ماده یافت نشد.")
+                st.success("✅ تداخل خطرناکی بین این دو ماده در دیتابیس ثبت نشده است.")
         else:
-            st.warning("لطفاً نام هر دو ماده را برای آنالیز وارد نمایید.")
+            st.warning("لطفاً نام هر دو ماده را وارد کنید.")
 
 st.markdown("---")
-st.caption("🧪 دستیار دیجیتال ایمنی شیمی | پایش هوشمند تداخلات بر پایه داده‌های جهانی 🧬")
+st.caption("🧪 سامانه پایش ایمنی | طراحی شده با Python برای محیط‌های آزمایشگاهی هوشمند")
