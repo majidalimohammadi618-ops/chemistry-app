@@ -4,48 +4,58 @@ import time
 import qrcode
 from io import BytesIO
 
-# تنظیمات اصلی صفحه
+# ۱. تنظیمات صفحه و استایل حرفه‌ای (انیمیشن‌ها)
 st.set_page_config(page_title="دستیار هوشمند شیمی", page_icon="🧪", layout="wide")
 
-# استایل‌دهی ظاهری
 st.markdown("""
     <style>
+    /* استایل کلی و رنگ متن */
     .stApp { background-color: #0e1117; color: #ffffff; }
+    
+    /* استایل دکمه‌ها و انیمیشن Hover */
     .stButton>button {
         width: 100%; border-radius: 15px; height: 3.5em;
         background-color: #ff4b4b; color: white; font-weight: bold;
         border: 2px solid #ff4b4b; transition: all 0.4s ease-in-out;
     }
-    .stButton>button:hover { background-color: #ffffff; color: #ff4b4b; transform: scale(1.05); }
+    .stButton>button:hover { 
+        background-color: #ffffff; color: #ff4b4b; 
+        transform: scale(1.05); border: 2px solid #ff4b4b;
+    }
+    
+    /* انیمیشن برای باکس خطر */
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.02); opacity: 1; }
+        100% { transform: scale(1); opacity: 0.9; }
+    }
     .danger-box {
         padding: 20px; border-radius: 10px; border: 2px dashed #ff4b4b;
         background-color: rgba(255, 75, 75, 0.1); text-align: center;
+        animation: pulse 2s infinite;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- بخش منوی سمت چپ (Sidebar) ---
+# ۲. منوی سمت چپ (Sidebar) و QR Code
 st.sidebar.header("🧪 پنل مدیریت پروژه")
 choice = st.sidebar.selectbox("انتخاب بخش کاری:", ["جستجوی اطلاعات ماده", "تحلیل تداخلات خطرناک"])
 
-# بخش QR Code (نسخه اصلاح شده با buf.seek)
 st.sidebar.markdown("---")
 st.sidebar.subheader("📱 دسترسی سریع موبایل")
-
 site_url = "https://chemistry-app-3thnjf2avnzzwhjtr9chdb.streamlit.app"
 qr_img = qrcode.make(site_url)
 buf = BytesIO()
 qr_img.save(buf, format="PNG")
-buf.seek(0)  # خط حیاتی برای نمایش صحیح تصویر در سایت
-
+buf.seek(0)
 st.sidebar.image(buf, caption="اسکن کنید و روی موبایل باز کنید")
 
-# --- محتوای اصلی برنامه ---
+# ۳. محتوای اصلی برنامه
 st.title("🧪 سامانه هوشمند ایمنی و تداخلات شیمیایی")
 
 if choice == "جستجوی اطلاعات ماده":
-    st.subheader("🔍 جستجوی ساختار و مشخصات")
-    compound_name = st.text_input("نام انگلیسی ماده (مثلاً Aspirin):")
+    st.subheader("🔍 جستجوی ساختار و مشخصات در دیتابیس جهانی")
+    compound_name = st.text_input("نام انگلیسی ماده (مثلاً Benzene):")
     
     if compound_name:
         try:
@@ -57,6 +67,8 @@ if choice == "جستجوی اطلاعات ماده":
                     st.success(f"✅ اطلاعات ماده {compound_name} یافت شد")
                     st.write(f"**فرمول مولکولی:** {c.molecular_formula}")
                     st.write(f"**وزن مولکولی:** {c.molecular_weight}")
+                    # اضافه شدن لینک مستقیم به منبع جهانی
+                    st.markdown(f"🔗 [مشاهده پروفایل کامل در PubChem](https://pubchem.ncbi.nlm.nih.gov/compound/{c.cid})")
                 with col2:
                     st.image(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{c.cid}/PNG", caption=f"ساختار دو بعدی {compound_name}")
             else:
