@@ -1,105 +1,102 @@
 import streamlit as st
 import pubchempy as pcp
 import time
+import qrcode
+from io import BytesIO
 
-
-# ۱. تنظیمات صفحه و استایل حرفه‌ای
+# تنظیمات اصلی صفحه
 st.set_page_config(page_title="دستیار هوشمند شیمی", page_icon="🧪", layout="wide")
 
+# استایل‌دهی ظاهری
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: #ffffff; }
-    .stButton>button { 
-        width: 100%; border-radius: 15px; height: 3.5em; 
+    .stButton>button {
+        width: 100%; border-radius: 15px; height: 3.5em;
         background-color: #ff4b4b; color: white; font-weight: bold;
         border: 2px solid #ff4b4b; transition: all 0.4s ease-in-out;
     }
-    .stButton>button:hover { background-color: #ffffff; color: #ff4b4b; transform: scale(1.02); }
+    .stButton>button:hover { background-color: #ffffff; color: #ff4b4b; transform: scale(1.05); }
     .danger-box {
-        background-color: #ff4b4b; padding: 20px; border-radius: 15px; 
-        text-align: center; border: 2px solid white;
-        animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-        70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        padding: 20px; border-radius: 10px; border: 2px dashed #ff4b4b;
+        background-color: rgba(255, 75, 75, 0.1); text-align: center;
     }
     </style>
     """, unsafe_allow_html=True)
 
+# --- بخش منوی سمت چپ (Sidebar) ---
+st.sidebar.header("🧪 پنل مدیریت پروژه")
+choice = st.sidebar.selectbox("انتخاب بخش کاری:", ["جستجوی اطلاعات ماده", "تحلیل تداخلات خطرناک"])
+
+# بخش QR Code (نسخه اصلاح شده با buf.seek)
+st.sidebar.markdown("---")
+st.sidebar.subheader("📱 دسترسی سریع موبایل")
+
+site_url = "https://chemistry-app-3thnjf2avnzzwhjtr9chdb.streamlit.app"
+qr_img = qrcode.make(site_url)
+buf = BytesIO()
+qr_img.save(buf, format="PNG")
+buf.seek(0)  # خط حیاتی برای نمایش صحیح تصویر در سایت
+
+st.sidebar.image(buf, caption="اسکن کنید و روی موبایل باز کنید")
+
+# --- محتوای اصلی برنامه ---
 st.title("🧪 سامانه هوشمند ایمنی و تداخلات شیمیایی")
-st.markdown("---")
 
-menu = st.sidebar.selectbox("انتخاب بخش:", ["جستجوی اطلاعات ماده", "تحلیل تداخلات (AI)"])
-
-if menu == "جستجوی اطلاعات ماده":
+if choice == "جستجوی اطلاعات ماده":
     st.subheader("🔍 جستجوی ساختار و مشخصات")
-    name = st.text_input("نام ماده را به انگلیسی وارد کنید (مثلاً Ethanol):")
-    if name:
+    compound_name = st.text_input("نام انگلیسی ماده (مثلاً Aspirin):")
+    
+    if compound_name:
         try:
-            results = pcp.get_compounds(name, 'name')
-            if results:
-                res = results[0]
-                st.success(f"✅ ماده یافت شد: {res.iupac_name}")
-                col1, col2 = st.columns([1, 2])
+            compounds = pcp.get_compounds(compound_name, 'name')
+            if compounds:
+                c = compounds[0]
+                col1, col2 = st.columns(2)
                 with col1:
-                    st.image(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{res.cid}/PNG", width=280)
+                    st.success(f"✅ اطلاعات ماده {compound_name} یافت شد")
+                    st.write(f"**فرمول مولکولی:** {c.molecular_formula}")
+                    st.write(f"**وزن مولکولی:** {c.molecular_weight}")
                 with col2:
-                    st.metric("فرمول مولکولی", res.molecular_formula)
-                    st.metric("وزن مولکولی", f"{res.molecular_weight} g/mol")
-                    # ایده جدید: لینک مستقیم به منبع رسمی برای اعتبار پروژه
-                    url = f"https://pubchem.ncbi.nlm.nih.gov/compound/{res.cid}"
-                    st.markdown(f"[🔗 مشاهده جزئیات تخصصی در دیتابیس PubChem]({url})")
-                    st.info(f"شناسه CID: {res.cid}")
+                    st.image(f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{c.cid}/PNG", caption=f"ساختار دو بعدی {compound_name}")
             else:
-                st.error("ماده یافت نشد.")
+                st.error("❌ متأسفانه ماده‌ای با این نام یافت نشد.")
         except:
-            st.error("خطا در اتصال به دیتابیس.")
+            st.error("⚠️ خطا در برقراری ارتباط با دیتابیس PubChem.")
 
-elif menu == "تحلیل تداخلات (AI)":
-    st.subheader("⚠️ بررسی خطر و پروتکل ایمنی")
-    c1, c2 = st.columns(2)
-    m1 = c1.text_input("نام ماده اول را وارد کنید:")
-    m2 = c2.text_input("نام ماده دوم را وارد کنید:")
-
-    if st.button("شروع آنالیز واکنش"):
+elif choice == "تحلیل تداخلات خطرناک":
+    st.subheader("⚠️ آنالیز هوشمند تداخلات")
+    m1 = st.text_input("نام ماده اول:")
+    m2 = st.text_input("نام ماده دوم:")
+    
+    if st.button("شروع آنالیز ایمنی"):
         if m1 and m2:
             progress_bar = st.progress(0)
-            status_text = st.empty()
-            for percent in range(100):
+            for i in range(100):
                 time.sleep(0.01)
-                progress_bar.progress(percent + 1)
-                if percent < 40: status_text.text("🔍 اسکن پیوندهای اتمی...")
-                elif percent < 80: status_text.text("⚡ شبیه‌سازی واکنش...")
-                else: status_text.text("⚠️ استخراج پروتکل ایمنی...")
+                progress_bar.progress(i + 1)
             
-            status_text.empty()
-            progress_bar.empty()
-
-            combos = [
-                ("acid", "bleach", "تولید گاز سمی کلر! پروتکل: تخلیه فوری محل.", "🚨 خطر مرگ"),
-                ("sodium", "water", "انفجار شدید هیدروژن! پروتکل: کپسول کلاس D.", "💥 انفجاری"),
-                ("ammonia", "bleach", "تولید کلرامین سمی! پروتکل: شستشوی تنفسی.", "🚨 سمی"),
-                ("acid", "base", "واکنش شدید گرماده! پروتکل: عینک و روپوش.", "🔥 گرماده"),
-                ("cyanide", "acid", "تولید گاز سیانور! پروتکل: اورژانس فوری.", "💀 مرگ آنی")
+            m1_l, m2_l = m1.lower(), m2.lower()
+            hazards = [
+                (["acid", "bleach"], "تولید گاز کلر بسیار سمی", "High Risk"),
+                (["sodium", "water"], "انفجار سریع و اشتعال شدید", "Critical"),
+                (["acid", "base"], "واکنش خنثی‌سازی همراه با گرمای شدید", "Medium Risk")
             ]
             
             found = False
-            m1_l, m2_l = m1.lower(), m2.lower()
-            for a, b, msg, lvl in combos:
-                if (a in m1_l and b in m2_l) or (a in m2_l and b in m1_l):
+            for (m1_check, m2_check), msg, lvl in hazards:
+                if (m1_l in m1_check and m2_l in m2_check) or (m1_l in m2_check and m2_l in m1_l):
                     found = True
-                    st.error(f"❌ سطح خطر شناسایی شده: {lvl}")
-                    st.markdown(f'<div class="danger-box"><h2 style="color:white; margin:0;">{lvl}</h2><p style="color:white; font-size:18px;">{msg}</p></div>', unsafe_allow_html=True)
-                    st.download_button("📥 دانلود گزارش ایمنی", f"گزارش خطر {m1} + {m2}\n{msg}", file_name="Safety_Report.txt")
+                    st.error(f"❌ سطح خطر: {lvl}")
+                    st.markdown(f'<div class="danger-box"><h2 style="color:white; margin:0;">{lvl}</h2><p style="color:white;">{msg}</p></div>', unsafe_allow_html=True)
+                    st.download_button("📥 دریافت فایل گزارش ایمنی", f"گزارش نهایی: ترکیب {m1} و {m2} منجر به {msg} می‌گردد.", file_name="Chemical_Safety_Report.txt")
                     break
+            
             if not found:
                 st.balloons()
-                st.success("✅ تداخل خطرناکی شناسایی نشد.")
+                st.success("✅ هیچ تداخل خطرناک شناخته شده‌ای بین این دو ماده یافت نشد.")
         else:
-            st.warning("لطفاً نام هر دو ماده را وارد کنید.")
+            st.warning("لطفاً نام هر دو ماده را برای آنالیز وارد نمایید.")
 
 st.markdown("---")
-
-st.caption("🧪 ⚗️ دستیار دیجیتال ایمنی شیمی | پایش هوشمند تداخلات بر پایه داده‌های جهانی")
+st.caption("🧪 دستیار دیجیتال ایمنی شیمی | پایش هوشمند تداخلات بر پایه داده‌های جهانی 🧬")
