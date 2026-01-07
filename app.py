@@ -43,7 +43,7 @@ choice = st.sidebar.selectbox("انتخاب بخش کاری:", ["جستجوی ا
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📱 دسترسی سریع موبایل")
-site_url = "https://chemistry-app-3thnjf2avnzzwhjtr9chdb.streamlit.app"
+site_url = "https://cheraghpour-hasani-lab.streamlit.app"
 qr_img = qrcode.make(site_url)
 buf = BytesIO()
 qr_img.save(buf, format="PNG")
@@ -121,4 +121,5 @@ elif choice == "تحلیل تداخلات خطرناک":
             st.warning("لطفاً نام هر دو ماده را وارد کنید.")
 
 st.markdown("---")
+
 st.caption("🧪 سامانه پایش ایمنی | طراحی شده با Python برای محیط‌های آزمایشگاهی هوشمند")
